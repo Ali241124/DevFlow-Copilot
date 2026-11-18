@@ -117,10 +117,20 @@ Do not invent features or technical decisions.
             return verified_analysis
 
         except json.JSONDecodeError as error:
-            raise ValueError(
-                "The AI returned invalid JSON."
-            ) from error
+            response_preview = (
+                response[:1000]
+                if "response" in locals()
+                else "No response received."
+            )
 
+            raise ValueError(
+                f"The AI returned invalid JSON. "
+                f"Line: {error.lineno}, "
+                f"Column: {error.colno}, "
+                f"Reason: {error.msg}. "
+                f"Response preview: {response_preview}"
+            ) from error
+    
         except ValidationError as error:
             raise ValueError(
                 f"The AI response did not match the requirements schema: {error}"

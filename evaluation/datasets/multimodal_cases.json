@@ -1,0 +1,318 @@
+
+{
+  "dataset_name": "DevFlow Copilot Multimodal Evaluation",
+  "version": "1.0",
+  "cases": [
+    {
+      "id": "TEXT-001",
+      "input_mode": "text_only",
+      "client_text": "Build a task management application. Users should be able to register, log in, create tasks, edit tasks, delete tasks, and mark tasks as completed.",
+      "image": null,
+      "expected": {
+        "required_features": [
+          "user registration",
+          "user login",
+          "create tasks",
+          "edit tasks",
+          "delete tasks",
+          "complete tasks"
+        ],
+        "should_identify_unknowns": true
+      }
+    },
+    {
+      "id": "TEXT-002",
+      "input_mode": "text_only",
+      "client_text": "Create an e-commerce website where customers can browse products, add products to a cart, and place orders.",
+      "image": null,
+      "expected": {
+        "required_features": [
+          "browse products",
+          "add to cart",
+          "place orders"
+        ],
+        "should_identify_unknowns": true
+      }
+    },
+    {
+      "id": "TEXT-003",
+      "input_mode": "text_only",
+      "client_text": "Build a student portal. Students should view their courses and attendance. Teachers should update attendance.",
+      "image": null,
+      "expected": {
+        "required_features": [
+          "view courses",
+          "view attendance",
+          "update attendance"
+        ],
+        "should_identify_unknowns": true
+      }
+    },
+    {
+      "id": "TEXT-004",
+      "input_mode": "text_only",
+      "client_text": "Develop a simple expense tracker. Users can add expenses with an amount, category, and date. Users can see their total spending.",
+      "image": null,
+      "expected": {
+        "required_features": [
+          "add expenses",
+          "expense amount",
+          "expense category",
+          "expense date",
+          "view total spending"
+        ],
+        "should_identify_unknowns": true
+      }
+    },
+    {
+      "id": "TEXT-005",
+      "input_mode": "text_only",
+      "client_text": "Make the application faster and more user friendly. It should look modern and work well.",
+      "image": null,
+      "expected": {
+        "required_features": [],
+        "should_identify_unknowns": true,
+        "should_flag_ambiguity": true
+      }
+    },
+
+    {
+      "id": "IMG-001",
+      "input_mode": "image_only",
+      "client_text": "",
+      "image": "data/evaluation_images/IMG-001-login.png",
+      "expected": {
+      "required_components": [
+        "Email address field",
+        "Password field",
+        "Login button"
+      ],
+      "visible_text": [
+        "Welcome back",
+        "Email address",
+        "Password",
+        "Login",
+        "Forgot password"
+      ],
+      "should_identify_unknowns": true
+      }
+    },
+    {
+      "id": "IMG-002",
+      "input_mode": "image_only",
+      "client_text": "",
+      "image": "data/evaluation_images/IMG-002-registration.png",
+      "expected": {
+      "required_components": [
+        "Full name field",
+        "Email address field",
+        "Password field",
+        "Create account button"
+      ],
+      "visible_text": [
+        "Create your account",
+        "Full name",
+        "Email address",
+        "Password",
+        "Create account"
+      ],
+      "should_identify_unknowns": true
+      }
+    },
+    {
+      "id": "IMG-003",
+      "input_mode": "image_only",
+      "client_text": "",
+      "image": "data/evaluation_images/IMG-003-task-dashboard.png",
+      "expected": {
+      "required_components": [
+        "Create Task button",
+        "Task list",
+        "Task status labels"
+      ],
+      "visible_text": [
+        "My Tasks",
+        "Create Task",
+        "Design homepage",
+        "Fix login validation",
+        "Write API tests",
+        "Prepare documentation",
+        "In Progress",
+        "Pending",
+        "Completed"
+      ],
+      "should_identify_unknowns": true
+      }
+    },
+    {
+      "id": "IMG-004",
+      "input_mode": "image_only",
+      "client_text": "",
+      "image": "data/evaluation_images/IMG-004-shopping-cart.png",
+      "expected": {
+      "required_components": [
+        "Product list",
+        "Product prices",
+        "Quantity information",
+        "Checkout button"
+      ],
+      "visible_text": [
+        "Shopping Cart",
+        "Wireless Headphones",
+        "USB Keyboard",
+        "Laptop Stand",
+        "Total: $130.00",
+        "Proceed to Checkout"
+      ],
+      "should_identify_unknowns": true
+      }
+    },
+    {
+      "id": "IMG-005",
+      "input_mode": "image_only",
+      "client_text": "",
+      "image": "data/evaluation_images/IMG-005-expense-dashboard.png",
+      "expected": {
+      "required_components": [
+        "Total Spending summary",
+        "Spending categories",
+        "Expense amounts"
+      ],
+      "visible_text": [
+        "Expense Dashboard",
+        "Total Spending",
+        "$1,250.00",
+        "Food",
+        "$450.00",
+        "Transport",
+        "$200.00",
+        "Shopping",
+        "$400.00",
+        "Bills"
+      ],
+      "should_identify_unknowns": true
+      }
+    },
+
+{
+  "id": "COMB-001",
+  "input_mode": "combined",
+  "client_text": "Build a login page with email and password fields. Include a Forgot Password option and a Login button.",
+  "image": "data/evaluation_images/IMG-001-login.png",
+  "expected": {
+    "required_features": [
+      "email login",
+      "password login",
+      "forgot password",
+      "login button"
+    ],
+    "visual_observations": [
+      "Email address field",
+      "Password field",
+      "Login button",
+      "Forgot password link"
+    ],
+    "should_distinguish_requested_from_visible": true
+  }
+},
+{
+  "id": "COMB-002",
+  "input_mode": "combined",
+  "client_text": "Create a registration page. Users must provide their full name, email, password, and phone number before creating an account.",
+  "image": "data/evaluation_images/IMG-002-registration.png",
+  "expected": {
+    "required_features": [
+      "full name",
+      "email",
+      "password",
+      "phone number",
+      "account creation"
+    ],
+    "visual_observations": [
+      "Full name field",
+      "Email address field",
+      "Password field",
+      "Create account button"
+    ],
+    "missing_visual_details": [
+      "Phone number field"
+    ],
+    "should_distinguish_requested_from_visible": true
+  }
+},
+{
+  "id": "COMB-003",
+  "input_mode": "combined",
+  "client_text": "Build a task dashboard where users can create tasks, view their status, filter tasks by status, and assign priority levels.",
+  "image": "data/evaluation_images/IMG-003-task-dashboard.png",
+  "expected": {
+    "required_features": [
+      "create tasks",
+      "view task status",
+      "filter by status",
+      "assign priority"
+    ],
+    "visual_observations": [
+      "Create Task button",
+      "Task list",
+      "Task status labels"
+    ],
+    "missing_visual_details": [
+      "Status filter control",
+      "Priority selector"
+    ],
+    "should_distinguish_requested_from_visible": true
+  }
+},
+{
+  "id": "COMB-004",
+  "input_mode": "combined",
+  "client_text": "Create a shopping cart that displays product names, prices, and quantities. Customers should also be able to apply discount coupon codes before checkout.",
+  "image": "data/evaluation_images/IMG-004-shopping-cart.png",
+  "expected": {
+    "required_features": [
+      "display product names",
+      "display prices",
+      "display quantities",
+      "apply discount coupon",
+      "checkout"
+    ],
+    "visual_observations": [
+      "Product list",
+      "Product prices",
+      "Quantity information",
+      "Checkout button"
+    ],
+    "missing_visual_details": [
+      "Coupon code field"
+    ],
+    "should_distinguish_requested_from_visible": true
+  }
+},
+{
+  "id": "COMB-005",
+  "input_mode": "combined",
+  "client_text": "Build an expense dashboard that displays total spending, spending by category, and a monthly spending trend chart.",
+  "image": "data/evaluation_images/IMG-005-expense-dashboard.png",
+  "expected": {
+    "required_features": [
+      "total spending",
+      "spending by category",
+      "monthly spending trend"
+    ],
+    "visual_observations": [
+      "Total Spending summary",
+      "Food category",
+      "Transport category",
+      "Shopping category",
+      "Bills category"
+    ],
+    "missing_visual_details": [
+      "Monthly spending trend chart"
+    ],
+    "should_distinguish_requested_from_visible": true
+  }
+}
+
+  ]
+}
