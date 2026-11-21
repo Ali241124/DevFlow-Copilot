@@ -139,21 +139,22 @@ def _build_prompt_v1(context: NormalizedContext) -> str:
     evidence_block = "\n\n".join(sections)
 
     return f"""
-Generate a complete project specification from the following evidence.
+Generate a complete, concise project specification from the following evidence.
 
 {evidence_block}
 
 --- INPUT MODE: {context.input_mode.upper().replace("_", " ")} ---
 
 Requirements:
-- Extract only features supported by the evidence.
-- Generate at least 2 user stories per significant feature (minimum 3 total).
-- Each story needs at least 1 Given/When/Then acceptance criterion.
-- Generate test cases: at least 2 positive, 1 negative, 1 edge case.
-- Write a detailed developer_prompt (minimum 100 words).
-- List all assumptions you made.
-- List all open questions about missing information.
-- Record evidence_notes to trace every major claim back to its source.
+- Extract 2 to 4 key features supported by the evidence.
+- Generate exactly 3 concise user stories (role, goal, benefit).
+- For each story, provide 1 Given/When/Then acceptance criterion.
+- Keep implementation_plan focused (2-3 bullet items per section: frontend, backend, data, apis, risks).
+- Generate exactly 4 test cases (2 positive, 1 negative, 1 edge case).
+- Write a concise developer_prompt (100 to 150 words).
+- List 2 to 4 assumptions and 2 to 3 open_questions.
+- Record 2 to 4 concise evidence_notes linking claims to source.
+- BE CONCISE in all descriptions and steps so the complete JSON response fits comfortably within output limits.
 
 Return ONLY valid JSON matching the ProjectSpecification schema.
 """
@@ -171,8 +172,8 @@ class SpecificationService:
     for every call (GEN-007).
     """
 
-    def __init__(self, llm_client: OllamaClient | None = None):
-        self.llm = llm_client or OllamaClient(model="qwen3:4b")
+    def __init__(self, llm_client: OllamaClient | None = None, model: str = "qwen2.5:1.5b"):
+        self.llm = llm_client or OllamaClient(model=model)
         self.prompt_version = PROMPT_VERSION
         self.model_name = self.llm.model
 

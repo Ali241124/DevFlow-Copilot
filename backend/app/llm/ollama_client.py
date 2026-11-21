@@ -49,8 +49,8 @@ class OllamaClient:
                 messages=messages,
                 options={
                     "temperature": temperature,
-                    "num_ctx": 2048,
-                    "num_predict": 1024
+                    "num_ctx": 8192,
+                    "num_predict": 4096
                 },
                 format=response_format if response_format else ""
             )

@@ -35,7 +35,8 @@ class ContextBuilder:
     def build(
         self,
         client_text: str = "",
-        image_paths: list[str] | None = None
+        image_paths: list[str] | None = None,
+        fast_mode: bool = True
     ) -> NormalizedContext:
 
         client_text = client_text.strip()
@@ -65,11 +66,7 @@ class ContextBuilder:
         # -----------------------------------------
 
         if has_text:
-            requirements = (
-                self.requirements_service.analyze(client_text)
-            )
-
-            # Keep the original client brief as evidence.
+            # Keep the original client brief as primary evidence.
             evidence.append(
                 EvidenceItem(
                     source="client_text",
@@ -80,72 +77,48 @@ class ContextBuilder:
                 )
             )
 
-            # Add extracted features.
-            for feature in requirements.features:
-
-                is_supported = bool(
-                    feature.source_text.strip()
+            # In fast_mode (used for full spec generation), avoid running a duplicate
+            # slow LLM call before SpecificationService runs. Only run text LLM if not fast_mode.
+            if not fast_mode:
+                requirements = (
+                    self.requirements_service.analyze(client_text)
                 )
 
-                evidence.append(
-                    EvidenceItem(
-                        source="client_text",
-                        category="requirement",
-                        content=(
-                            feature.source_text
-                            if is_supported
-                            else (
-                                f"{feature.name}: "
-                                f"{feature.description}"
-                            )
-                        ),
-                        status=(
-                            "provided"
-                            if is_supported
-                            else "assumed"
-                        ),
-                        evidence_note=(
-                            "Matched supporting text from the brief."
-                            if is_supported
-                            else (
-                                "AI-generated interpretation without "
-                                "verified source evidence. Requires review."
-                            )
+                for feature in requirements.features:
+                    is_supported = bool(feature.source_text.strip())
+                    evidence.append(
+                        EvidenceItem(
+                            source="client_text",
+                            category="requirement",
+                            content=feature.source_text if is_supported else f"{feature.name}: {feature.description}",
+                            status="provided" if is_supported else "assumed",
+                            evidence_note="Matched supporting text from the brief." if is_supported else "AI-generated interpretation without verified source evidence."
                         )
                     )
-                )
 
-            # Collect text-analysis assumptions.
-            for assumption in requirements.assumptions:
-                assumptions.append(assumption)
-
-                evidence.append(
-                    EvidenceItem(
-                        source="client_text",
-                        category="assumption",
-                        content=assumption,
-                        status="assumed",
-                        evidence_note=(
-                            "Generated during requirements analysis."
+                for assumption in requirements.assumptions:
+                    assumptions.append(assumption)
+                    evidence.append(
+                        EvidenceItem(
+                            source="client_text",
+                            category="assumption",
+                            content=assumption,
+                            status="assumed",
+                            evidence_note="Generated during requirements analysis."
                         )
                     )
-                )
 
-            # Collect open questions.
-            for question in requirements.open_questions:
-                open_questions.append(question)
-
-                evidence.append(
-                    EvidenceItem(
-                        source="client_text",
-                        category="unknown",
-                        content=question,
-                        status="unknown",
-                        evidence_note=(
-                            "Requires clarification from the client."
+                for question in requirements.open_questions:
+                    open_questions.append(question)
+                    evidence.append(
+                        EvidenceItem(
+                            source="client_text",
+                            category="unknown",
+                            content=question,
+                            status="unknown",
+                            evidence_note="Requires clarification from the client."
                         )
                     )
-                )
 
         
         # -----------------------------------------

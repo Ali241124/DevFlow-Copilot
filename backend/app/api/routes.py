@@ -236,10 +236,18 @@ async def analyze_requirements(
 
     try:
         context_builder = ContextBuilder()
-        context = context_builder.build(
-            client_text=client_text,
-            image_paths=image_paths,
-        )
+        # Call build() with kwargs only if supported
+        try:
+            context = context_builder.build(
+                client_text=client_text,
+                image_paths=image_paths,
+                fast_mode=False,
+            )
+        except TypeError:
+            context = context_builder.build(
+                client_text=client_text,
+                image_paths=image_paths,
+            )
         return {
             "message": "Requirement analysis completed.",
             "result": context.model_dump(),

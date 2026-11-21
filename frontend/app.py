@@ -18,9 +18,16 @@ UI principles:
 """
 
 import json
+import os
+import sys
+from pathlib import Path
 import requests
 import streamlit as st
-from pathlib import Path
+
+# Ensure repository root is on sys.path so 'backend' package imports work cleanly
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -63,10 +70,16 @@ def api_post(path: str, data: dict | None = None, files=None) -> dict | None:
             f"{API_BASE}{path}",
             data=data,
             files=files,
-            timeout=180,  # LLM can take a while
+            timeout=600,  # 10 minutes timeout for local CPU execution
         )
         response.raise_for_status()
         return response.json()
+    except requests.exceptions.ReadTimeout:
+        st.error(
+            "⏳ **Generation Request Timed Out (Local Model is Processing)**\n\n"
+            "The model is taking longer on CPU. Please check the backend terminal."
+        )
+        return None
     except requests.exceptions.ConnectionError:
         st.error(
             "❌ **Cannot reach the API server.**\n\n"
@@ -186,6 +199,17 @@ def render_sidebar() -> str | None:
 # ---------------------------------------------------------------------------
 
 def render_input_tab(project_id: str):
+    # Show generation banner if recently generated
+    if st.session_state.get("show_success_banner"):
+        st.success(
+            f"🎉 **Specification & Engineering Artifacts Generated Successfully!** "
+            f"(Artifact ID: `{st.session_state.get('last_artifact_id')}`)\n\n"
+            f"👉 Click on the **📋 Specification** tab above to view the complete requirements, user stories, acceptance criteria, test cases, and developer prompt!"
+        )
+        if st.button("Dismiss Notification"):
+            st.session_state["show_success_banner"] = False
+            st.rerun()
+
     st.header("📥 Submit Requirements")
 
     st.info(
@@ -270,17 +294,11 @@ def render_input_tab(project_id: str):
             )
 
             if result:
-                st.success(
-                    f"✅ Specification generated! **Status: DRAFT** "
-                    f"(artifact ID: `{result['artifact_id'][:12]}…`)"
-                )
-                st.warning(
-                    "⚠️ **This is an AI-generated draft and requires human review "
-                    "before it is used in any development work.**"
-                )
                 st.session_state["last_artifact_id"] = result["artifact_id"]
                 st.session_state["last_specification"] = result["specification"]
                 st.session_state["last_metadata"] = result["metadata"]
+                st.session_state["show_success_banner"] = True
+                st.toast("✅ Specification generated successfully!", icon="🎉")
                 st.rerun()
 
 
