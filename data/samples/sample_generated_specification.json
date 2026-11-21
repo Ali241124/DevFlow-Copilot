@@ -1,0 +1,145 @@
+{
+  "project_summary": "Online medical clinic booking interface allowing patients to schedule 30-minute consultations with available doctors.",
+  "features": [
+    {
+      "name": "Doctor Calendar View",
+      "description": "Weekly calendar displaying available 30-minute appointment slots for doctors.",
+      "priority": "high",
+      "source": "client_text"
+    },
+    {
+      "name": "Appointment Booking Form",
+      "description": "Patient inputs personal details and confirms selection of available appointment slot.",
+      "priority": "high",
+      "source": "client_text"
+    },
+    {
+      "name": "Confidential Medical Notes",
+      "description": "Secure text area allowing patient to provide consultation notes prior to visit.",
+      "priority": "medium",
+      "source": "client_text"
+    }
+  ],
+  "user_stories": [
+    {
+      "story_id": "US-001",
+      "role": "patient",
+      "goal": "view doctor availability on a weekly calendar",
+      "benefit": "select a time slot that matches my schedule"
+    },
+    {
+      "story_id": "US-002",
+      "role": "patient",
+      "goal": "book a 30-minute consultation slot",
+      "benefit": "confirm my appointment with the doctor"
+    },
+    {
+      "story_id": "US-003",
+      "role": "patient",
+      "goal": "submit confidential medical notes",
+      "benefit": "provide context to the physician before the consultation"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "story_id": "US-001",
+      "given": "A patient is viewing the clinic booking page",
+      "when": "A doctor is selected from the dropdown",
+      "then": "Available 30-minute slots are rendered on the weekly calendar"
+    },
+    {
+      "story_id": "US-002",
+      "given": "A patient has selected an open slot",
+      "when": "They submit valid contact details and click confirm",
+      "then": "The appointment is reserved and an appointment reference number is displayed"
+    },
+    {
+      "story_id": "US-003",
+      "given": "A patient is confirming a booking",
+      "when": "They enter medical symptom notes",
+      "then": "The notes are stored with restricted access visible only to the assigned doctor"
+    }
+  ],
+  "implementation_plan": {
+    "frontend": [
+      "Doctor selector dropdown",
+      "Interactive weekly calendar grid component",
+      "Booking confirmation modal with note textarea"
+    ],
+    "backend": [
+      "GET /api/v1/doctors/{id}/availability",
+      "POST /api/v1/appointments/book",
+      "POST /api/v1/appointments/{id}/notes"
+    ],
+    "data": [
+      "doctors table (id, name, specialty)",
+      "availability_slots table (doctor_id, start_time, end_time, is_booked)",
+      "appointments table (id, slot_id, patient_name, notes, status)"
+    ],
+    "apis": [
+      "Internal Clinic Scheduling REST API"
+    ],
+    "dependencies": [
+      "Local Python 3.11 environment with SQLite",
+      "Ollama model runtime"
+    ],
+    "risks": [
+      "Double booking of the same slot during concurrent patient submissions",
+      "Data privacy compliance for stored medical notes"
+    ]
+  },
+  "test_cases": [
+    {
+      "test_id": "TC-001",
+      "type": "positive",
+      "title": "Successfully book an open appointment slot",
+      "steps": [
+        "Select Doctor Smith",
+        "Select Monday 10:00 AM slot",
+        "Enter name 'Jane Doe'",
+        "Click Confirm Booking"
+      ],
+      "expected_result": "System returns 200 OK, marks slot as booked, and returns confirmation code"
+    },
+    {
+      "test_id": "TC-002",
+      "type": "negative",
+      "title": "Prevent booking an already reserved slot",
+      "steps": [
+        "Select a slot that was already booked by another user",
+        "Click Confirm Booking"
+      ],
+      "expected_result": "System returns 409 Conflict with error message 'Slot is no longer available'"
+    },
+    {
+      "test_id": "TC-003",
+      "type": "edge",
+      "title": "Booking request during daylight saving time changeover",
+      "steps": [
+        "Request booking during UTC timezone shift boundary"
+      ],
+      "expected_result": "System stores appointment in unambiguous UTC ISO format without corrupting time"
+    }
+  ],
+  "developer_prompt": "You are implementing the Smart Clinic Portal scheduling module. Constraints: Use FastAPI and SQLite with transactional row-level isolation on availability_slots to prevent double booking. Expose GET availability and POST booking endpoints conforming strictly to the defined schema. Write comprehensive unit tests.",
+  "assumptions": [
+    "Appointments are fixed at 30 minutes duration.",
+    "System stores all timestamps in UTC."
+  ],
+  "open_questions": [
+    "What is the clinic cancellation policy timeframe?",
+    "Do patients require SMS or email confirmation notifications?"
+  ],
+  "evidence_notes": [
+    {
+      "claim": "Doctor Appointment Booking",
+      "source": "client_text",
+      "note": "Directly requested in client brief."
+    },
+    {
+      "claim": "30-minute consultation slots",
+      "source": "client_text",
+      "note": "Explicitly stated in client brief."
+    }
+  ]
+}
