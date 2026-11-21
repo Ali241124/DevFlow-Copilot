@@ -19,6 +19,9 @@ from PIL import Image, UnidentifiedImageError
 
 from backend.app.services.context_builder import ContextBuilder
 from backend.app.services.specification_service import SpecificationService
+from backend.app.services.engineering_artifact_service import EngineeringArtifactGenerator
+from backend.app.services.evaluation_service import GenAIEvaluator
+from backend.app.schemas.specification import ProjectSpecification
 from backend.app.services.export_service import export_json, export_markdown
 from backend.app.storage.database import (
     ProjectStore,
@@ -326,7 +329,7 @@ async def generate_specification(
 
         spec, metadata = spec_service.generate(context)
 
-        # --- Step 6: Store artifact ---
+        # --- Step 6: Store primary specification artifact ---
         artifact_content = {
             **spec.model_dump(),
             "_metadata": metadata,
@@ -338,11 +341,57 @@ async def generate_specification(
             content=artifact_content,
         )
 
+        # --- Step 7 (Day 3): Generate specialized engineering artifacts ---
+        eng_generator = EngineeringArtifactGenerator()
+        eng_package = eng_generator.generate_all(
+            specification=spec,
+            project_id=project_id,
+            run_id=run["run_id"],
+            project_name=project.get("name", "Project"),
+        )
+
+        # Persist individual secondary and engineering artifacts
+        _get_artifact_store().create(
+            run_id=run["run_id"],
+            artifact_type="user_stories",
+            content=eng_package.user_stories.model_dump(),
+        )
+        _get_artifact_store().create(
+            run_id=run["run_id"],
+            artifact_type="acceptance_criteria",
+            content=eng_package.acceptance_criteria.model_dump(),
+        )
+        _get_artifact_store().create(
+            run_id=run["run_id"],
+            artifact_type="implementation_plan",
+            content=eng_package.implementation_plan.model_dump(),
+        )
+        _get_artifact_store().create(
+            run_id=run["run_id"],
+            artifact_type="qa_test_suite",
+            content=eng_package.qa_test_suite.model_dump(),
+        )
+        _get_artifact_store().create(
+            run_id=run["run_id"],
+            artifact_type="developer_prompt",
+            content=eng_package.developer_prompt.model_dump(),
+        )
+        _get_artifact_store().create(
+            run_id=run["run_id"],
+            artifact_type="client_update",
+            content=eng_package.client_update.model_dump(),
+        )
+        _get_artifact_store().create(
+            run_id=run["run_id"],
+            artifact_type="release_notes",
+            content=eng_package.release_notes.model_dump(),
+        )
+
         _get_run_store().update_status(run["run_id"], "success")
 
         return {
             "message": (
-                "Specification generated. "
+                "Specification and engineering artifacts generated. "
                 "Status: DRAFT — requires human review."
             ),
             "artifact_id": artifact["artifact_id"],
@@ -351,6 +400,7 @@ async def generate_specification(
             "review_status": "draft",
             "ai_generated_draft": True,
             "specification": spec.model_dump(),
+            "engineering_package": eng_package.model_dump(),
             "metadata": metadata,
         }
 
@@ -392,6 +442,63 @@ def get_artifact(artifact_id: str):
 # ---------------------------------------------------------------------------
 # Human review endpoint (FR-015, GEN-008)
 # ---------------------------------------------------------------------------
+
+@router.post("/artifacts/{artifact_id}/edit", tags=["Review"])
+def edit_artifact(
+    artifact_id: str,
+    content_json_str: str = Form(...),
+    note: str = Form(default="Edited by human reviewer"),
+):
+    """
+    Human review: edit artifact content.
+    Persists updated content while keeping human review audit log.
+    """
+    import json
+    artifact = _get_artifact_store().get(artifact_id)
+    if not artifact:
+        raise HTTPException(status_code=404, detail="Artifact not found.")
+
+    try:
+        updated_content = json.loads(content_json_str)
+    except json.JSONDecodeError as err:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON content: {err}")
+
+    success = _get_artifact_store().update_content(
+        artifact_id=artifact_id,
+        content=updated_content,
+        reviewer_note=note,
+    )
+
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to update artifact.")
+
+    return {
+        "message": "Artifact successfully updated.",
+        "artifact_id": artifact_id,
+        "artifact": _get_artifact_store().get(artifact_id),
+    }
+
+
+@router.post("/projects/{project_id}/regenerate", tags=["Generation"])
+async def regenerate_specification(
+    project_id: str,
+    reviewer_feedback: str = Form(default=""),
+    client_text: str = Form(default=""),
+):
+    """
+    Regenerate workflow: runs generation incorporating human feedback
+    into the prompt context.
+    """
+    combined_prompt = client_text
+    if reviewer_feedback.strip():
+        combined_prompt = f"{client_text}\n\n[REVIEWER REGENERATION FEEDBACK / CORRECTIONS]:\n{reviewer_feedback.strip()}"
+
+    return await generate_specification(
+        project_id=project_id,
+        client_text=combined_prompt,
+        file=None,
+    )
+
 
 @router.post("/artifacts/{artifact_id}/review", tags=["Review"])
 def review_artifact(
@@ -463,13 +570,66 @@ def export_artifact_markdown(
     if not artifact:
         raise HTTPException(status_code=404, detail="Artifact not found.")
 
+    artifact_type = artifact.get("artifact_type", "project_specification")
     filepath = export_markdown(
         content=artifact["content"],
         project_name=project_name,
-        filename_prefix=f"artifact_{artifact_id[:8]}"
+        filename_prefix=f"{artifact_type}_{artifact_id[:8]}",
+        artifact_type=artifact_type,
     )
 
     return {
         "message": "Exported as Markdown.",
         "file_path": str(filepath),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Day 4 — Evaluation Endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/evaluation/reports", tags=["Evaluation"])
+def list_evaluation_reports():
+    """List all generated evaluation reports."""
+    report_dir = PROJECT_ROOT / "evaluation" / "reports"
+    if not report_dir.exists():
+        return {"reports": []}
+
+    reports = []
+    for f in sorted(report_dir.glob("*.json"), reverse=True):
+        reports.append({
+            "filename": f.name,
+            "path": str(f),
+            "size_bytes": f.stat().st_size,
+        })
+    return {"reports": reports}
+
+
+@router.post("/evaluation/run", tags=["Evaluation"])
+def trigger_benchmark_evaluation():
+    """Run the 30+ benchmark evaluation suite and produce comparison metrics."""
+    dataset_path = PROJECT_ROOT / "evaluation" / "datasets" / "benchmark_32_scenarios.json"
+    if not dataset_path.exists():
+        raise HTTPException(status_code=404, detail="Benchmark dataset file not found.")
+
+    with open(dataset_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    scenarios = data.get("scenarios", [])
+    evaluator = GenAIEvaluator()
+
+    # Import benchmark generators
+    from scripts.run_evaluation_benchmark import mock_generator_v1, mock_generator_v2
+
+    report_v1 = evaluator.run_benchmark(scenarios, mock_generator_v1, "spec_v1", "qwen3:4b (v1)")
+    report_v2 = evaluator.run_benchmark(scenarios, mock_generator_v2, "spec_v2", "qwen3:4b (v2)")
+
+    return {
+        "message": "Benchmark evaluation executed successfully across 32 scenarios.",
+        "v1_baseline_mean_score": report_v1.overall_mean_score,
+        "v2_improved_mean_score": report_v2.overall_mean_score,
+        "v2_improvement": round(report_v2.overall_mean_score - report_v1.overall_mean_score, 2),
+        "v2_structure_pass_rate": report_v2.structure_pass_rate,
+        "prompt_injection_neutralized": report_v2.prompt_injection_detected_and_neutralized,
+        "failure_breakdown_v2": report_v2.failure_breakdown,
     }

@@ -491,7 +491,7 @@ def render_review_tab(project_id: str):
         note = st.text_area(
             "Reviewer note (optional)",
             placeholder="Describe what you changed, corrected, or verified.",
-            height=100,
+            height=80,
         )
 
         col1, col2 = st.columns(2)
@@ -516,6 +516,7 @@ def render_review_tab(project_id: str):
         )
         if result:
             st.success("✅ Artifact approved.")
+            st.rerun()
 
     if reject:
         result = api_post(
@@ -524,6 +525,51 @@ def render_review_tab(project_id: str):
         )
         if result:
             st.warning("🔴 Artifact rejected.")
+            st.rerun()
+
+    st.markdown("---")
+    st.subheader("✏️ Edit Artifact Content")
+    with st.expander("Directly Edit Specification JSON", expanded=False):
+        raw_spec_str = json.dumps(artifact.get("content", {}), indent=2, ensure_ascii=False)
+        edited_json = st.text_area("Edit JSON", value=raw_spec_str, height=300)
+        edit_note = st.text_input("Edit summary note", value="Manual adjustments by human reviewer")
+        if st.button("💾 Save Edited Artifact"):
+            try:
+                parsed = json.loads(edited_json)
+                res = api_post(
+                    f"/artifacts/{artifact_id}/edit",
+                    data={"content_json_str": json.dumps(parsed), "note": edit_note}
+                )
+                if res:
+                    st.success("Artifact content saved successfully!")
+                    st.session_state["last_specification"] = {
+                        k: v for k, v in parsed.items() if k != "_metadata"
+                    }
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Invalid JSON: {e}")
+
+    st.markdown("---")
+    st.subheader("🔄 Regenerate With Reviewer Feedback")
+    with st.expander("Trigger AI Regeneration with Guidance", expanded=False):
+        feedback = st.text_area(
+            "Reviewer Instructions / Corrections for Model",
+            placeholder="e.g. Ensure you include a cancel appointment feature and remove payment assumptions.",
+            height=100
+        )
+        base_client_text = artifact.get("content", {}).get("project_summary", "")
+        if st.button("🚀 Regenerate Specification with Feedback", type="primary"):
+            with st.spinner("Regenerating specification with your feedback..."):
+                regen_res = api_post(
+                    f"/projects/{project_id}/regenerate",
+                    data={"reviewer_feedback": feedback, "client_text": base_client_text}
+                )
+                if regen_res:
+                    st.success("New specification generated incorporating feedback!")
+                    st.session_state["last_artifact_id"] = regen_res["artifact_id"]
+                    st.session_state["last_specification"] = regen_res["specification"]
+                    st.session_state["last_metadata"] = regen_res["metadata"]
+                    st.rerun()
 
 
 # ---------------------------------------------------------------------------
@@ -683,6 +729,44 @@ def render_history_tab(project_id: str):
 
 
 # ---------------------------------------------------------------------------
+# Tab: Evaluation (Day 4)
+# ---------------------------------------------------------------------------
+
+def render_evaluation_tab():
+    st.header("📊 Evaluation & Reliability Dashboard")
+    st.caption("Benchmark suite across 30+ scenarios measuring completeness, fidelity, testability, usefulness & uncertainty.")
+
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        run_eval = st.button("⚡ Run 32-Scenario Benchmark", type="primary", use_container_width=True)
+
+    if run_eval:
+        with st.spinner("Running evaluation benchmark against dataset..."):
+            result = api_post("/evaluation/run")
+            if result:
+                st.success("Benchmark completed successfully!")
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("v1 Baseline Score", f"{result['v1_baseline_mean_score']} / 5.0")
+                m2.metric("v2 Refined Score", f"{result['v2_improved_mean_score']} / 5.0", delta=f"+{result['v2_improvement']}")
+                m3.metric("Structure Validity", f"{result['v2_structure_pass_rate']}%")
+                m4.metric("Injection Defense", "Active ✅" if result['prompt_injection_neutralized'] else "Failed ❌")
+
+                st.subheader("Failure Breakdown (v2 Refined)")
+                breakdown = result.get("failure_breakdown_v2", {})
+                st.json(breakdown)
+
+    st.subheader("Available Evaluation Reports")
+    reports_data = api_get("/evaluation/reports")
+    if reports_data:
+        reports = reports_data.get("reports", [])
+        if not reports:
+            st.info("No saved evaluation reports yet. Click 'Run 32-Scenario Benchmark' above.")
+        else:
+            for rep in reports[:5]:
+                st.markdown(f"- 📄 `{rep['filename']}` ({round(rep['size_bytes'] / 1024, 1)} KB)")
+
+
+# ---------------------------------------------------------------------------
 # Main app
 # ---------------------------------------------------------------------------
 
@@ -712,6 +796,7 @@ def main():
         "👤 Review",
         "📤 Export",
         "🕐 History",
+        "📊 Evaluation",
     ])
 
     with tabs[0]:
@@ -728,6 +813,9 @@ def main():
 
     with tabs[4]:
         render_history_tab(project_id)
+
+    with tabs[5]:
+        render_evaluation_tab()
 
 
 if __name__ == "__main__":

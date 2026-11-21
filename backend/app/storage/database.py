@@ -363,6 +363,31 @@ class ArtifactStore:
             "reviewed_at": None,
         }
 
+    def update_content(
+        self,
+        artifact_id: str,
+        content: dict,
+        reviewer_note: str = ""
+    ) -> bool:
+        """
+        Update the content of an artifact (Edit workflow).
+        Updates review_status to 'draft' or keeps existing, noting edit timestamp.
+        """
+        content_json = json.dumps(content, ensure_ascii=False)
+        updated_at = _now()
+
+        with get_connection(self.db_path) as conn:
+            cursor = conn.execute(
+                """
+                UPDATE artifacts
+                SET content_json = ?, reviewer_note = ?, reviewed_at = ?
+                WHERE artifact_id = ?
+                """,
+                (content_json, reviewer_note, updated_at, artifact_id)
+            )
+
+        return cursor.rowcount > 0
+
     def review(
         self,
         artifact_id: str,
