@@ -11,6 +11,7 @@ All endpoints operate locally. No data leaves the machine.
 """
 
 from io import BytesIO
+import json
 from pathlib import Path
 from uuid import uuid4
 

@@ -59,7 +59,10 @@ def api_get(path: str) -> dict | None:
         )
         return None
     except requests.exceptions.HTTPError as error:
-        detail = error.response.json().get("detail", str(error))
+        try:
+            detail = error.response.json().get("detail", str(error))
+        except Exception:
+            detail = error.response.text or str(error)
         st.error(f"❌ API error: {detail}")
         return None
 
@@ -88,7 +91,10 @@ def api_post(path: str, data: dict | None = None, files=None) -> dict | None:
         )
         return None
     except requests.exceptions.HTTPError as error:
-        detail = error.response.json().get("detail", str(error))
+        try:
+            detail = error.response.json().get("detail", str(error))
+        except Exception:
+            detail = error.response.text or str(error)
         st.error(f"❌ API error: {detail}")
         return None
 
@@ -102,7 +108,10 @@ def api_delete(path: str) -> dict | None:
         st.error("❌ Cannot reach the API server.")
         return None
     except requests.exceptions.HTTPError as error:
-        detail = error.response.json().get("detail", str(error))
+        try:
+            detail = error.response.json().get("detail", str(error))
+        except Exception:
+            detail = error.response.text or str(error)
         st.error(f"❌ API error: {detail}")
         return None
 
